@@ -1,0 +1,23 @@
+{
+  "name": "next-code-js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "npx tsc -b",
+    "run": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "packageManager": "pnpm@10.7.1",
+  "dependencies": {
+    "@types/node": "^25.3.0",
+    "dotenv": "^17.3.1",
+    "openai": "^6.24.0",
+    "typescript": "^5.9.3"
+  }
+}
