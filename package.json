@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --outDir dist",
+    "build": "tsup src/index.ts --format esm --outDir dist --external readline/promises",
     "run": "node dist/index.js"
   },
   "keywords": [],

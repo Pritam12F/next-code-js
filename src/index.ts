@@ -3,10 +3,12 @@ import { getInput } from "./input";
 import { SYSTEM_PROMPT } from "./prompts/system";
 import { GoogleGenAI } from "@google/genai";
 import type { GeminiMessages } from "./types";
-import { generateFirstUserQuery } from "./utils/query";
+import { generateFirstUserQuery, generateUserQuery } from "./utils/query";
 import { extractTags } from "./utils/extract-tag";
 import { execSync } from "child_process";
 import fs from "fs";
+import { getAllFiles, getFileTree } from "./utils/file";
+import path from "path";
 
 dotenv.config();
 
@@ -17,10 +19,6 @@ async function main(query: string) {
   const messages: GeminiMessages = [];
 
   while (true) {
-    if (messages.length === 0) {
-      messages.push({ role: "user", content: firstQuery });
-    }
-
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       history: messages,
@@ -31,14 +29,16 @@ async function main(query: string) {
       message: firstQuery,
     });
 
+    if (messages.length === 0) {
+      messages.push({ role: "user", parts: [{ text: firstQuery }] });
+    }
+
     if (res.text) {
       const content = res.text.trim();
 
       if (content === "<done />") break;
 
-      console.log(content);
-
-      messages.push({ role: "assistant", content });
+      messages.push({ role: "model", parts: [{ text: content }] });
 
       const tabs = extractTags(content);
 
@@ -60,10 +60,30 @@ async function main(query: string) {
 
           execSync(command);
 
-          messages.push({
-            role: "user",
-            content: `Command ${command} was run successfully.`,
-          });
+          if (command.includes("shadcn")) {
+            const getFiles = () => {
+              return {
+                allFiles: getAllFiles(path.resolve(__dirname)),
+                relevantFiles: getAllFiles(path.resolve(__dirname)).filter(
+                  (f) => f.endsWith(".tsx"),
+                ),
+              };
+            };
+
+            const { allFiles, relevantFiles } = getFiles();
+            const fileTree = getFileTree(allFiles);
+            const payload = generateUserQuery("", relevantFiles, fileTree);
+
+            messages.push({
+              role: "user",
+              parts: [{ text: payload }],
+            });
+          } else {
+            messages.push({
+              role: "user",
+              parts: [{ text: `Command ${command} was run successfully.` }],
+            });
+          }
         } else if (element.startsWith("<command path=")) {
           const command = element.substring(
             element.search(">") + 1,
@@ -76,7 +96,7 @@ async function main(query: string) {
 
           messages.push({
             role: "user",
-            content: `Command ${command} was run successfully.`,
+            parts: [{ text: `Command ${command} was run successfully.` }],
           });
         } else if (element.startsWith("<fileCreate")) {
           const fileContent = element
@@ -97,7 +117,7 @@ async function main(query: string) {
 
           messages.push({
             role: "user",
-            content: `File ${filePath} was created successfully.`,
+            parts: [{ text: `File ${filePath} was created successfully.` }],
           });
         } else if (element.startsWith("<fileEdit")) {
           const content = element
@@ -114,11 +134,7 @@ async function main(query: string) {
             content.search("</replace"),
           );
 
-          const readStream = fs.createReadStream(`./${filePath}`, {
-            encoding: "utf8",
-          });
-
-          const fileContent: string = readStream.read();
+          const fileContent = fs.readFileSync(`./${filePath}`, "utf8");
 
           const editedCode = fileContent.replace(searchCode, newCode);
 
@@ -132,7 +148,7 @@ async function main(query: string) {
 
           messages.push({
             role: "user",
-            content: `File ${filePath} was edited successfully.`,
+            parts: [{ text: `File ${filePath} was edited successfully.` }],
           });
         } else if (element.startsWith("<fileDelete")) {
           const filePath = element.match(/path="([^"]*)"/)?.[1]!;
@@ -141,7 +157,7 @@ async function main(query: string) {
 
           messages.push({
             role: "user",
-            content: `File ${filePath} was deleted successfully.`,
+            parts: [{ text: `File ${filePath} was deleted successfully.` }],
           });
         } else if (element.startsWith("<question>")) {
           const question = element.substring(
@@ -149,27 +165,32 @@ async function main(query: string) {
             element.search("</question"),
           );
 
-          const anwser = await getInput(question);
+          const answer = await getInput(question);
 
           messages.push({
             role: "user",
-            content: `User answered: '${anwser} to question: '${question}'`,
+            parts: [
+              { text: `User answered: '${answer}' to question: '${question}'` },
+            ],
           });
         } else if (element.startsWith("<readFile")) {
           const filePath = element.match(/path="([^"]*)"/)?.[1]!;
 
-          const readStream = fs.createReadStream(`./${filePath}`, {
+          const fileContent = fs.readFileSync(`./${filePath}`, {
             encoding: "utf8",
           });
+          const allFiles = getAllFiles(path.resolve(__dirname));
+          const fileTree = getFileTree(allFiles);
+          const payload = generateUserQuery("", fileContent, fileTree);
 
-          const fileContent: string = readStream.read();
+          messages.push({ role: "user", parts: [{ text: payload }] });
         }
       });
 
       // const stepMatch = content.match(/number=\{(\d+)\}\s+label=\{([^}]*)\}/)!;
       messages.push({
         role: "user",
-        content: `Step was completed successfully`,
+        parts: [{ text: `Step was completed successfully` }],
       });
     }
   }

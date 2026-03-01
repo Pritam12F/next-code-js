@@ -6,7 +6,7 @@ export const generateFirstUserQuery = (q: string) => `<input>
 
 export const generateUserQuery = (
   q: string,
-  codeChunk: string,
+  codeChunk: string[] | string,
   fileTree: Array<Record<string, string>>,
 ) => {
   let result = "<input>";
@@ -19,12 +19,25 @@ export const generateUserQuery = (
     `;
   }
 
-  if (codeChunk.length) {
+  if (codeChunk && Array.isArray(codeChunk)) {
+    let chunk = "";
+
+    codeChunk.forEach((c) => {
+      const newChunk = chunk.concat(c);
+      chunk = newChunk;
+    });
+
     result += `
-  <codeChunk>
-    ${codeChunk}
-  </codeChunk>
-    `;
+    <codeChunk>
+      ${chunk}
+    </codeChunk>
+      `;
+  } else if (codeChunk && typeof codeChunk === "string" && codeChunk.length) {
+    result += `
+    <codeChunk>
+      ${codeChunk}
+    </codeChunk>
+      `;
   }
 
   if (fileTree.length) {
