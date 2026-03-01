@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { getInput } from "./input";
 import { SYSTEM_PROMPT } from "./prompts/system";
 import { GoogleGenAI } from "@google/genai";
-import type { AnthropicMessages } from "./types";
+import type { GeminiMessages } from "./types";
 import { generateFirstUserQuery } from "./utils/query";
 import { extractTags } from "./utils/extract-tag";
 import { execSync } from "child_process";
@@ -14,9 +14,13 @@ const ai = new GoogleGenAI({});
 
 async function main(query: string) {
   const firstQuery = generateFirstUserQuery(query);
-  const messages: AnthropicMessages = [{ role: "user", content: firstQuery }];
+  const messages: GeminiMessages = [];
 
   while (true) {
+    if (messages.length === 0) {
+      messages.push({ role: "user", content: firstQuery });
+    }
+
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       history: messages,
@@ -24,7 +28,7 @@ async function main(query: string) {
     });
 
     const res = await chat.sendMessage({
-      message: query,
+      message: firstQuery,
     });
 
     if (res.text) {
@@ -151,16 +155,22 @@ async function main(query: string) {
             role: "user",
             content: `User answered: '${anwser} to question: '${question}'`,
           });
+        } else if (element.startsWith("<readFile")) {
+          const filePath = element.match(/path="([^"]*)"/)?.[1]!;
+
+          const readStream = fs.createReadStream(`./${filePath}`, {
+            encoding: "utf8",
+          });
+
+          const fileContent: string = readStream.read();
         }
       });
 
-      const stepMatch = content.match(/number=\{(\d+)\}\s+label=\{([^}]*)\}/)!;
+      // const stepMatch = content.match(/number=\{(\d+)\}\s+label=\{([^}]*)\}/)!;
       messages.push({
         role: "user",
         content: `Step was completed successfully`,
       });
-
-      console.log(JSON.stringify(stepMatch));
     }
   }
 

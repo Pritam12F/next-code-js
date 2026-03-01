@@ -1,21 +1,41 @@
 export const generateFirstUserQuery = (q: string) => `<input>
-                                                        <userMessage>
-                                                           ${q}
-                                                        </userMessage>
-                                                      </input>`;
+  <userMessage>
+    ${q}
+  </userMessage>
+</input>`;
 
 export const generateUserQuery = (
   q: string,
   codeChunk: string,
-  fileTree: Record<string, any>,
-) => `<input>
-         <userMessage>
-            ${q}
-         </userMessage>
-         <codeChunk>
-            ${codeChunk}
-         </codeChunk>
-         <fileTree>
-            ${JSON.stringify(fileTree)}
-         </fileTree>
-      </input>`;
+  fileTree: Array<Record<string, string>>,
+) => {
+  let result = "<input>";
+
+  if (q.length) {
+    result += `
+  <userMessage>
+    ${q}
+  </userMessage>
+    `;
+  }
+
+  if (codeChunk.length) {
+    result += `
+  <codeChunk>
+    ${codeChunk}
+  </codeChunk>
+    `;
+  }
+
+  if (fileTree.length) {
+    result += `
+  <fileTree>
+    ${JSON.stringify(fileTree)}
+  </fileTree>
+    `;
+  }
+
+  result += "</input>";
+
+  return result;
+};
