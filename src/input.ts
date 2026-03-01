@@ -1,10 +1,10 @@
 import readline from "readline/promises";
 
-export const getPrompt = () => {
+export const getInput = async (query = "What would you like to build?\n") => {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  return rl.question("What would you like to build?");
+  return rl.question(query);
 };
