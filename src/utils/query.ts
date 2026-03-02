@@ -1,3 +1,5 @@
+import { getAllFiles, getFileTreeJSON, getRelevantFilesWithData } from "./file";
+
 export const generateFirstUserQuery = (q: string) => `<input>
   <userMessage>
     ${q}
@@ -6,8 +8,8 @@ export const generateFirstUserQuery = (q: string) => `<input>
 
 export const generateUserQuery = (
   q: string,
-  codeChunk: string[] | string,
-  fileTree: Array<Record<string, string>>,
+  codeChunk: string[],
+  fileTree: string,
 ) => {
   let result = "<input>";
 
@@ -19,7 +21,7 @@ export const generateUserQuery = (
     `;
   }
 
-  if (codeChunk && Array.isArray(codeChunk)) {
+  if (Array.isArray(codeChunk) && codeChunk.length) {
     let chunk = "";
 
     codeChunk.forEach((c) => {
@@ -32,18 +34,12 @@ export const generateUserQuery = (
       ${chunk}
     </codeChunk>
       `;
-  } else if (codeChunk && typeof codeChunk === "string" && codeChunk.length) {
-    result += `
-    <codeChunk>
-      ${codeChunk}
-    </codeChunk>
-      `;
   }
 
   if (fileTree.length) {
     result += `
   <fileTree>
-    ${JSON.stringify(fileTree)}
+    ${fileTree}
   </fileTree>
     `;
   }
@@ -52,3 +48,20 @@ export const generateUserQuery = (
 
   return result;
 };
+
+export function generateFullQuery(projectName: string, userQuery = "") {
+  const allFiles = getAllFiles(projectName);
+  const relevantFilesWithContent = getRelevantFilesWithData(
+    allFiles,
+    projectName,
+  );
+
+  const fileTree = getFileTreeJSON(allFiles);
+  const payload = generateUserQuery(
+    userQuery,
+    relevantFilesWithContent,
+    fileTree,
+  );
+
+  return payload;
+}

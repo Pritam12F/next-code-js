@@ -1,12 +1,13 @@
 import fs from "fs";
 import path from "path";
 import { ignoreFiles, ignoreFolders } from "../constants/ignore";
+import process from "process";
 
-// Make sure rootPath is the absolute path of the project root directory
+export const getAllFiles = (projectName: string) => {
+  const dirPath = path.resolve(process.cwd(), projectName);
 
-export const getAllFiles = (rootPath: string) => {
   const allFiles = fs
-    .readdirSync(rootPath, {
+    .readdirSync(dirPath, {
       encoding: "utf8",
       recursive: true,
     })
@@ -37,21 +38,29 @@ export const getAllFiles = (rootPath: string) => {
   return allFiles;
 };
 
-export const getFileTree = (files: string[]) => {
-  return files.map((file) => ({
-    path: file,
-    type: "file",
-  }));
+export const getFileTreeJSON = (files: string[]) => {
+  return JSON.stringify(
+    files.map((file) => ({
+      path: file,
+      type: "file",
+    })),
+  );
 };
 
-export const getRelevantFiles = async (files: string[]) => {
-  const content = await Promise.all(
-    files.map(async (file) => {
-      const fileContent = fs.readFileSync(path.resolve(file), "utf8");
+export const getRelevantFilesWithData = (
+  files: string[],
+  projectName: string,
+) => {
+  const content = files
+    .filter((f) => f.endsWith(".tsx"))
+    .map((file) => {
+      const fileContent = fs.readFileSync(
+        path.join(".", projectName, file),
+        "utf8",
+      );
 
-      return `<file path="${file}">${fileContent}</file>`;
-    }),
-  );
+      return `<file path="${path.join(".", projectName, file)}">${fileContent}</file>`;
+    });
 
   return content;
 };

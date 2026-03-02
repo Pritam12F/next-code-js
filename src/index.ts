@@ -3,12 +3,15 @@ import { getInput } from "./input";
 import { SYSTEM_PROMPT } from "./prompts/system";
 import { GoogleGenAI } from "@google/genai";
 import type { GeminiMessages } from "./types";
-import { generateFirstUserQuery, generateUserQuery } from "./utils/query";
+import { generateFirstUserQuery } from "./utils/query";
 import { extractTags } from "./utils/extract-tag";
-import { execSync } from "child_process";
-import fs from "fs";
-import { getAllFiles, getFileTree } from "./utils/file";
-import path from "path";
+import { handleCommand, handleCommandWithPath } from "./handlers/command";
+import {
+  handleFileCreate,
+  handleFileDelete,
+  handleFileEdit,
+  handleReadFile,
+} from "./handlers/file";
 
 dotenv.config();
 
@@ -36,13 +39,13 @@ async function main(query: string) {
     if (res.text) {
       const content = res.text.trim();
 
-      if (content === "<done />") break;
+      if (content.includes("<done />")) break;
 
       messages.push({ role: "model", parts: [{ text: content }] });
 
-      const tabs = extractTags(content);
+      const tags = extractTags(content);
 
-      tabs.forEach(async (element) => {
+      tags.forEach(async (element) => {
         if (element.startsWith("<info>")) {
           console.log(
             element.substring(
@@ -51,114 +54,15 @@ async function main(query: string) {
             ),
           );
         } else if (element.startsWith("<command>")) {
-          const command = element
-            .substring(
-              element.search("<command>") + 9,
-              element.search("</command>"),
-            )
-            .trim();
-
-          execSync(command);
-
-          if (command.includes("shadcn")) {
-            const getFiles = () => {
-              return {
-                allFiles: getAllFiles(path.resolve(__dirname)),
-                relevantFiles: getAllFiles(path.resolve(__dirname)).filter(
-                  (f) => f.endsWith(".tsx"),
-                ),
-              };
-            };
-
-            const { allFiles, relevantFiles } = getFiles();
-            const fileTree = getFileTree(allFiles);
-            const payload = generateUserQuery("", relevantFiles, fileTree);
-
-            messages.push({
-              role: "user",
-              parts: [{ text: payload }],
-            });
-          } else {
-            messages.push({
-              role: "user",
-              parts: [{ text: `Command ${command} was run successfully.` }],
-            });
-          }
+          handleCommand(element, messages);
         } else if (element.startsWith("<command path=")) {
-          const command = element.substring(
-            element.search(">") + 1,
-            element.search("</command>"),
-          );
-
-          const path = element.match(/path="([^"]*)"/)?.[1]!;
-
-          execSync(`cd ./${path} && ${command}`);
-
-          messages.push({
-            role: "user",
-            parts: [{ text: `Command ${command} was run successfully.` }],
-          });
+          handleCommandWithPath(element, messages);
         } else if (element.startsWith("<fileCreate")) {
-          const fileContent = element
-            .substring(element.search(">") + 1, element.search("</fileCreate>"))
-            .trim();
-          const filePath = element.match(/path="([^"]*)"/)?.[1]!;
-          const dirPath = filePath.slice(0, filePath.lastIndexOf("/"));
-
-          fs.mkdirSync(dirPath, { recursive: true });
-
-          const writeStream = fs.createWriteStream(`./${filePath}`, {
-            encoding: "utf8",
-          });
-
-          writeStream.write(fileContent, (err) => {
-            console.log(err?.message);
-          });
-
-          messages.push({
-            role: "user",
-            parts: [{ text: `File ${filePath} was created successfully.` }],
-          });
+          handleFileCreate(element, messages);
         } else if (element.startsWith("<fileEdit")) {
-          const content = element
-            .substring(element.search(">") + 1, element.search("</fileEdit>"))
-            .trim();
-          const filePath = element.match(/path="([^"]*)"/)?.[1]!;
-          const searchCode = content.substring(
-            content.search("<search>") + 7,
-            content.search("</search>"),
-          );
-
-          const newCode = content.substring(
-            content.search("<replace>") + 9,
-            content.search("</replace"),
-          );
-
-          const fileContent = fs.readFileSync(`./${filePath}`, "utf8");
-
-          const editedCode = fileContent.replace(searchCode, newCode);
-
-          const writeStream = fs.createWriteStream(`./${filePath}`, {
-            encoding: "utf8",
-          });
-
-          writeStream.write(editedCode, (err) => {
-            console.log(err?.message);
-          });
-
-          messages.push({
-            role: "user",
-            parts: [{ text: `File ${filePath} was edited successfully.` }],
-          });
+          handleFileEdit(element, messages);
         } else if (element.startsWith("<fileDelete")) {
-          const filePath = element.match(/path="([^"]*)"/)?.[1]!;
-
-          fs.unlinkSync(`./${filePath}`);
-
-          messages.push({
-            role: "user",
-            parts: [{ text: `File ${filePath} was deleted successfully.` }],
-          });
+          handleFileDelete(element, messages);
         } else if (element.startsWith("<question>")) {
           const question = element.substring(
             element.search("<question>") + 10,
@@ -174,16 +78,7 @@ async function main(query: string) {
             ],
           });
         } else if (element.startsWith("<readFile")) {
-          const filePath = element.match(/path="([^"]*)"/)?.[1]!;
-
-          const fileContent = fs.readFileSync(`./${filePath}`, {
-            encoding: "utf8",
-          });
-          const allFiles = getAllFiles(path.resolve(__dirname));
-          const fileTree = getFileTree(allFiles);
-          const payload = generateUserQuery("", fileContent, fileTree);
-
-          messages.push({ role: "user", parts: [{ text: payload }] });
+          handleReadFile(element, messages);
         }
       });
 
