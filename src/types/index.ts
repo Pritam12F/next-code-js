@@ -1,4 +1,4 @@
-export type GeminiMessages = {
-  role: "user" | "model";
-  parts: { text: string }[];
+export type GemmaMessages = {
+  role: string;
+  content: string;
 }[];

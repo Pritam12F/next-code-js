@@ -14,10 +14,9 @@
   "type": "module",
   "packageManager": "pnpm@10.7.1",
   "dependencies": {
-    "@google/genai": "^1.43.0",
     "@types/node": "^25.3.0",
     "dotenv": "^17.3.1",
-    "openai": "^6.24.0",
+    "ollama": "^0.6.3",
     "typescript": "^5.9.3"
   },
   "devDependencies": {

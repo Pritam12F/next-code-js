@@ -1,4 +1,4 @@
-import type { GeminiMessages } from "../types";
+import type { GemmaMessages } from "../types";
 
 export const extractTags = (content: string) => {
   const stepStart = content.search("<step>");
@@ -15,14 +15,14 @@ export const extractTags = (content: string) => {
   return extractedTags;
 };
 
-export const extractProject = (messages: GeminiMessages) => {
-  const step = messages.filter((m) =>
-    m.parts[0]?.text.startsWith("<step number={2}"),
-  )[0]?.parts[0]?.text!;
+export const extractProject = (messages: GemmaMessages) => {
+  const step = messages.filter(
+    (m) => m.role === "assistant" && m.content.startsWith("<step"),
+  )[0]!.content;
 
-  const match = step.match(/<command>([\s\S]*?)<\/command>/);
+  const match = step.match(/<command[^>]*>([\s\S]*?)<\/command>/);
 
-  const projectName = match?.[0]?.trim().split(" ")[3]!;
+  const projectName = match?.[1]?.trim().split(" ")[3]!;
 
-  return projectName.trim();
+  return projectName;
 };
