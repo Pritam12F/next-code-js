@@ -22,7 +22,7 @@ async function main(query: string) {
 
   while (true) {
     const response = await ollama.chat({
-      model: "minimax-m2.5:cloud",
+      model: "glm-5:cloud",
       messages: messages,
     });
 
@@ -30,46 +30,76 @@ async function main(query: string) {
 
     messages.push({ role: "assistant", content });
 
-    if (content.includes("<done />")) break;
+    if (content.endsWith("<done />")) {
+      break;
+    }
 
     const tags = extractTags(content);
 
-    tags.forEach(async (element) => {
-      if (element.startsWith("<info>")) {
-        console.log(
-          element.substring(
-            element.indexOf("<info>") + "<info>".length,
-            element.indexOf("</info>"),
-          ),
-        );
-      } else if (element.startsWith("<command>")) {
-        handleCommand(element, messages);
-      } else if (element.startsWith("<command path=")) {
-        handleCommandWithPath(element, messages);
-      } else if (element.startsWith("<fileCreate")) {
-        handleFileCreate(element, messages);
-      } else if (element.startsWith("<fileEdit")) {
-        handleFileEdit(element, messages);
-      } else if (element.startsWith("<fileDelete")) {
-        handleFileDelete(element, messages);
-      } else if (element.startsWith("<question>")) {
-        const question = element.substring(
-          element.indexOf("<question>") + "<question>".length,
-          element.indexOf("</question>"),
-        );
+    await Promise.all(
+      tags.map(async (element) => {
+        if (element.startsWith("<info>")) {
+          console.log(
+            element.substring(
+              element.indexOf("<info>") + "<info>".length,
+              element.indexOf("</info>"),
+            ),
+          );
+        } else if (element.startsWith("<command>")) {
+          try {
+            handleCommand(element, messages);
+          } catch (error) {
+            console.error(error);
+          }
+        } else if (element.startsWith("<command path=")) {
+          try {
+            handleCommandWithPath(element, messages);
+          } catch (error) {
+            console.error(error);
+          }
+        } else if (element.startsWith("<fileCreate")) {
+          try {
+            handleFileCreate(element, messages);
+          } catch (error) {
+            console.error(error);
+          }
+        } else if (element.startsWith("<fileEdit")) {
+          try {
+            handleFileEdit(element, messages);
+          } catch (err) {
+            console.error(err);
+          }
+        } else if (element.startsWith("<fileDelete")) {
+          try {
+            handleFileDelete(element, messages);
+          } catch (error) {
+            console.error(error);
+          }
+        } else if (element.startsWith("<question>")) {
+          try {
+            const question = element.substring(
+              element.indexOf("<question>") + "<question>".length,
+              element.indexOf("</question>"),
+            );
 
-        const answer = await getInput(question);
+            const answer = await getInput(question);
 
-        messages.push({
-          role: "user",
-          content: `User answered: '${answer}' to question: '${question}'`,
-        });
-      } else if (element.startsWith("<readFile")) {
-        handleReadFile(element, messages);
-      }
-    });
-
-    const stepMatch = content.match(/number=\{(\d+)\}\s+label="([^"]*)"/)!;
+            messages.push({
+              role: "user",
+              content: `User answered: '${answer}' to question: '${question}'`,
+            });
+          } catch (error) {
+            console.error(error);
+          }
+        } else if (element.startsWith("<readFile")) {
+          try {
+            handleReadFile(element, messages);
+          } catch (error) {
+            console.error(error);
+          }
+        }
+      }),
+    );
 
     messages.push({
       role: "user",
@@ -80,6 +110,4 @@ async function main(query: string) {
   return;
 }
 
-getInput().then(async (res) => {
-  await main(res);
-});
+getInput().then((res) => main(res).then(() => process.exit(0)));

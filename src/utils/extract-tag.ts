@@ -17,12 +17,12 @@ export const extractTags = (content: string) => {
 
 export const extractProject = (messages: GemmaMessages) => {
   const step = messages.filter(
-    (m) => m.role === "assistant" && m.content.startsWith("<step"),
-  )[0]!.content;
+    (m) => m.role === "assistant" && m.content.startsWith("<step number={2}"),
+  )[0]?.content!;
 
-  const match = step.match(/<command[^>]*>([\s\S]*?)<\/command>/);
+  const match = step.match(/<command>\s*([\s\S]*?)\s*<\/command>/);
 
-  const projectName = match?.[1]?.trim().split(" ")[3]!;
+  const projectName = match?.[0]?.trim().split(" ")[3]!;
 
   return projectName;
 };
