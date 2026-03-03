@@ -30,10 +30,6 @@ async function main(query: string) {
 
     messages.push({ role: "assistant", content });
 
-    if (content.endsWith("<done />")) {
-      break;
-    }
-
     const tags = extractTags(content);
 
     await Promise.all(
@@ -100,6 +96,8 @@ async function main(query: string) {
         }
       }),
     );
+
+    if (content.endsWith("<done />")) break;
 
     messages.push({
       role: "user",
